@@ -38,53 +38,53 @@ exports.protect = asyncHandler(async (req, res, next) => {
   }
 });
 
-// // Grant access to specific roles
-// exports.authorize = asyncHandler(async (req, res, next) => {
-//   const str = req.originalUrl.substring(8);
-//   // console.log("str>>>>", str);
-//   const result = str.match(/\w+/g);
+// Grant access to specific roles
+exports.authorize = asyncHandler(async (req, res, next) => {
+  const str = req.originalUrl.substring(8);
+  // console.log("str>>>>", str);
+  const result = str.match(/\w+/g);
 
-//   let equal = false;
+  let equal = false;
 
-//   for (let i = 0; i < req.user.group.length; i++) {
-//     const element = req.user.group[i];
+  for (let i = 0; i < req.user.group.length; i++) {
+    const element = req.user.group[i];
 
-//     const group = await Group.findOne({ name: element });
+    const group = await Group.findOne({ name: element });
 
-//     for (let k = 0; k < group.permissions.length; k++) {
-//       let count = 1;
-//       const elem = group.permissions[k];
+    for (let k = 0; k < group.permissions.length; k++) {
+      let count = 1;
+      const elem = group.permissions[k];
 
-//       let e;
-//       let eq;
+      let e;
+      let eq;
 
-//       if (elem?.prefixName == "") {
-//         e = [elem.serviceName, elem.funcName];
-//         eq = await _.isEqual(result.slice(0, 2), e);
-//       } else {
-//         e = [elem.serviceName, elem?.prefixName, elem.funcName];
-//         eq = await _.isEqual(result.slice(0, 3), e);
-//       }
+      if (elem?.prefixName == "") {
+        e = [elem.serviceName, elem.funcName];
+        eq = await _.isEqual(result.slice(0, 2), e);
+      } else {
+        e = [elem.serviceName, elem?.prefixName, elem.funcName];
+        eq = await _.isEqual(result.slice(0, 3), e);
+      }
 
-//       if (eq) {
-//         equal = true;
-//       }
+      if (eq) {
+        equal = true;
+      }
 
-//       count++;
+      count++;
 
-//       // console.log("element", eq);
-//     }
-//   }
+      // console.log("element", eq);
+    }
+  }
 
-//   if (equal) {
-//     // console.log("NEXT");
-//     next();
-//   } else {
-//     return next(
-//       new ErrorResponse(
-//         "Not authorized to access this route for access to route should request for permission",
-//         401
-//       )
-//     );
-//   }
-// });
+  if (equal) {
+    // console.log("NEXT");
+    next();
+  } else {
+    return next(
+      new ErrorResponse(
+        "Not authorized to access this route for access to route should request for permission",
+        401
+      )
+    );
+  }
+});
