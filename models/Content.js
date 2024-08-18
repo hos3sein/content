@@ -72,6 +72,7 @@ const ContentSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    news : {type : Boolean , default : false},
   },
   { timestamps: true }
 );

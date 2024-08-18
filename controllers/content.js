@@ -19,41 +19,12 @@ exports.createContent = asyncHandler(async (req, res, next) => {
   
   let approve=true
   let badWords
-  const findBadWords=await BadWords.find()
-  if(findBadWords==0){
-    badWords=[]
-  }else{
-    badWords=findBadWords[0].badWords
-  }
   
-
-  if(findBadWords==0){
-    badWords=[]
-  }
-
   if (req.body.title) {
-    const { title, description, photo, video, voice, category } = req.body;
-    // create post
-    badWords.forEach(item=>{
-      let titleCheck
-      let descriptionCheck
-      if(title){
-        const lowerItem=item.toLowerCase()
-        const lowerTitle=title.toLowerCase()
-        titleCheck.toLowerCase()=lowerTitle.includes(lowerItem)
-      }
-      if(description){
-        const lowerItem=item.toLowerCase()
-        const descriptionlower=description.toLowerCase()
-        descriptionCheck=descriptionlower.includes(lowerItem)
-      }
-      if(!titleCheck||!descriptionCheck){
-        approve=false
-      }
-    })
-    
+    let { title, description, photo, video, voice, category } = req.body;
+  
     const content = await Content.create({
-      title,
+      title : req.body.title,
       description,
       photo,
       video,
@@ -69,32 +40,37 @@ exports.createContent = asyncHandler(async (req, res, next) => {
       data: content,
     });
   } else {
-    console.log("fistPlace",approve);
+    // console.log("fistPlace",approve);
     const obj = {
       _id: req.user._id,
       username: req.user.username,
       pictureProfile: req.user.pictureProfile,
     };
-
+    
     if (!req.body.category) {
       return next(new ErrorResponse(`Category is required`, 401));
     }
-    console.log("BAAADD",badWords);
-    badWords.forEach(item=>{
-      let textCheck
-      if(req.body.input[0].text){
-        const lowerItem=item.word.toLowerCase()
-        const lowerText=req.body.input[0].text.toLowerCase()
-        console.log(lowerItem);
-        console.log(lowerText);
-        textCheck=lowerText.includes(lowerItem)
-        console.log(textCheck);
-      }
-      if(textCheck){
-        approve=false
-      }
-    })
-     
+    // console.log("BAAADD",badWords);
+    
+//       const findBadWords=await BadWords.find()
+//       const badwords = findBadWords[0].badWords
+//       console.log('>>>>' , badwords)
+//       console.log('><><><>',req.body.input.length)
+//       let inp = req.body.input
+//      inp.forEach(element=>{
+//         //  console.log('its hewew')
+//          if (element.text){
+//             //  console.log('2222')
+//               badwords.forEach(elem2=>{
+//               const word = new RegExp(elem2.word)
+//               while(word.test(element.text)){
+//                  element.text = element.text.replace(elem2.word , "***")
+//               }
+              
+//       })
+//     }
+// })
+//     console.log(inp)
     const content = await Content.create({
       input: req.body.input,
       category: req.body.category,
@@ -106,14 +82,14 @@ exports.createContent = asyncHandler(async (req, res, next) => {
       return next(new ErrorResponse(`create content failed`, 404));
     }
     
-    console.log("secondPlace",approve);
-    const forum = await Content.find()
+    // console.log("secondPlace",approve);
+   const forum = await Content.find()
     .populate({
       path: "comments",
     })
     .sort({ createdAt: "desc" });
     await refresh(forum);
-
+    
     res.status(200).json({
       success: true,
       data: content,
@@ -121,13 +97,16 @@ exports.createContent = asyncHandler(async (req, res, next) => {
   }
 });
 
+
+
+
 exports.createContentWeb = asyncHandler(async (req, res, next) => {
   const isAdmin = req.user.group.includes("admin");
   const isSuperAdmin = req.user.group.includes("superAdmin");
   if (!isAdmin && !isSuperAdmin) {
     return next(new ErrorResponse("you dont have access to this route", 401));
   }
-  const { title, description, category, photo, video, voice, file } = req.body;
+  let { title, description, category, photo, video, voice, file } = req.body;
 
   if (!title) {
     return next(new ErrorResponse(`News must have a title`, 403));
@@ -139,19 +118,50 @@ exports.createContentWeb = asyncHandler(async (req, res, next) => {
   if (!category) {
     return next(new ErrorResponse(`News must have a category `, 403));
   }
+  
+  let input=[]
 
+  
+  if (photo.length){
+    let index = 1
+    photo.forEach(elem=>{
+      const obj = {index : index , text : null , image : elem}
+      input.push(obj)
+      index += 1
+    })
+   
+  }
+ 
+ 
+  const obj = {
+      _id: req.user._id,
+      username: req.user.username,
+      pictureProfile: req.user.pictureProfile,
+    };
+    
+  
   const newContent = await Content.create({
     title,
+    writer : obj,
     category,
     description,
-    photo,
     video,
     voice,
     file,
+    input,
+    approve : true,
+    news : true
   });
-
+  const forum = await Content.find()
+    .populate({
+      path: "comments",
+    })
+  await refresh(forum);
+  
   res.status(201).json({ success: true, content: newContent });
 });
+
+
 
 exports.allMe = asyncHandler(async (req, res, next) => {
   // find all post that sender == me
@@ -162,6 +172,41 @@ exports.allMe = asyncHandler(async (req, res, next) => {
   if (!content) {
     return next(new ErrorResponse(`content me not found`, 404));
   }
+  
+  const findBadWords=await BadWords.find()
+   const badwords = findBadWords[0].badWords
+   console.log('>>>>' , badwords)
+   content.forEach(element=>{
+         if (element.title){
+            badwords.forEach(elem2=>{
+            const word = new RegExp(elem2.word)
+            while(word.test(element.title)){
+                 element.title = element.title.replace(elem2.word , "***")
+            }
+      })
+    }
+        if (element.description){
+            badwords.forEach(elem2=>{
+            const word = new RegExp(elem2.word)
+            while(word.test(element.description)){
+                 element.description = element.description.replace(elem2.word , "***")
+            }
+        })
+        }
+        if (element.input.length){
+        element.input.forEach(element2=>{
+         if (element2.text){
+              badwords.forEach(elem2=>{
+              const word = new RegExp(elem2.word)
+              while(word.test(element2.text)){
+                 element2.text = element2.text.replace(elem2.word , "***")
+              }
+      })
+    }
+})     
+}
+})
+  
 
   res.status(200).json({
     success: true,
@@ -398,6 +443,39 @@ exports.allLast = asyncHandler(async (req, res, next) => {
     })
     .sort({ createdAt: -1 })
     .limit(100);
+    const findBadWords=await BadWords.find()
+   const badwords = findBadWords[0].badWords
+   console.log('>>>>' , badwords)
+   forum.forEach(element=>{
+        if (element.title){
+            badwords.forEach(elem2=>{
+            const word = new RegExp(elem2.word)
+            while(word.test(element.title)){
+                 element.title = element.title.replace(elem2.word , "***")
+            }
+      })
+    }
+        if (element.description){
+            badwords.forEach(elem2=>{
+            const word = new RegExp(elem2.word)
+            while(word.test(element.description)){
+                 element.description = element.description.replace(elem2.word , "***")
+            }
+        })
+        }
+       if (element.input.length){
+        element.input.forEach(element2=>{
+         if (element2.text){
+              badwords.forEach(elem2=>{
+              const word = new RegExp(elem2.word)
+              while(word.test(element2.text)){
+                 element2.text = element2.text.replace(elem2.word , "***")
+              }
+      })
+    }
+})     
+}
+})
 
   if (!forum) {
     return next(new ErrorResponse(`forums not found `, 404));
@@ -411,14 +489,77 @@ exports.allLast = asyncHandler(async (req, res, next) => {
 });
 
 exports.allWithoutToken = asyncHandler(async (req, res, next) => {
-  const forum = await Content.find({
-    approve:true
-  })
+  console.log('enter>>>')
+  const forum = await Content.find({approve : true})
     .populate({
       path: "comments",
     })
     .sort({ createdAt: -1 })
     .limit(10);
+
+
+  const findBadWords=await BadWords.find()
+   const badwords = findBadWords[0].badWords
+   console.log('>>>>' , badwords)
+   forum.forEach(element=>{
+       console.log('111')
+        if (element.title){
+            console.log('2222')
+            badwords.forEach(elem2=>{
+                console.log('3333')
+            const word = new RegExp(elem2.word)
+            while(word.test(element.title)){
+                 element.title = element.title.replace(elem2.word , "***")
+            }
+      })
+    }
+        if (element.description){
+            console.log('4444')
+            badwords.forEach(elem2=>{
+                console.log('555')
+            const word = new RegExp(elem2.word)
+            while(word.test(element.description)){
+                console.log('666')
+                 element.description = element.description.replace(elem2.word , "***")
+            }
+        })
+        }
+       if (element.input.length){
+        element.input.forEach(element2=>{
+         if (element2.text){
+              badwords.forEach(elem2=>{
+              const word = new RegExp(elem2.word)
+              while(word.test(element2.text)){
+                 element2.text = element2.text.replace(elem2.word , "***")
+              }
+      })
+    }
+})     
+}
+})
+
+
+
+  console.log('the contents >>> ' , forum[0])
+  if (!forum) {
+    return next(new ErrorResponse(`forums not found `, 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    length: forum.length,
+    data: forum,
+  });
+});
+
+
+
+exports.adminAll = asyncHandler(async (req, res, next) => {
+  const forum = await Content.find({approve : true})
+    .populate({
+      path: "comments",
+    })
+    .sort({ createdAt: -1 })
 
   if (!forum) {
     return next(new ErrorResponse(`forums not found `, 404));
@@ -430,6 +571,8 @@ exports.allWithoutToken = asyncHandler(async (req, res, next) => {
     data: forum,
   });
 });
+
+
 
 exports.all = asyncHandler(async (req, res, next) => {
   const find = await SearchHistory.find({ me: req.user._id });
@@ -452,17 +595,42 @@ exports.all = asyncHandler(async (req, res, next) => {
     return next(new ErrorResponse(`forums not found `, 404));
   }
 
-  // const newForum= forum.forEach(async(item)=>{
-  //   item.comments.forEach(async(item)=>{
-  //     // newreplayArray.push(item.replay)
-  //     if(item.replay.length!==0){
-  //       item.replay.forEach(async(element)=>{
-  //         newreplayArray.push(element.replayId);
-  //       })
-  //     }
-  //   })
-  // })
-  // const replays= await findReplayFunction(newreplayArray)
+   
+ const findBadWords=await BadWords.find()
+   const badwords = findBadWords[0].badWords
+   console.log('>>>>' , badwords)
+   forum.forEach(element=>{
+         if (element.title){
+            badwords.forEach(elem2=>{
+            const word = new RegExp(elem2.word)
+            while(word.test(element.title)){
+                 element.title = element.title.replace(elem2.word , "***")
+            }
+      })
+    }
+        if (element.description){
+            badwords.forEach(elem2=>{
+            const word = new RegExp(elem2.word)
+            while(word.test(element.description)){
+                 element.description = element.description.replace(elem2.word , "***")
+            }
+        })
+        }
+        if (element.input.length){
+        element.input.forEach(element2=>{
+         if (element2.text){
+              badwords.forEach(elem2=>{
+              const word = new RegExp(elem2.word)
+              while(word.test(element2.text)){
+                 element2.text = element2.text.replace(elem2.word , "***")
+              }
+      })
+    }
+})     
+}
+})
+
+  
   res.status(200).json({
     success: true,
     length: forum.length,
@@ -561,31 +729,12 @@ exports.searchHistoryMe = asyncHandler(async (req, res, next) => {
   });
 });
 
+
 // two
 exports.addComment = asyncHandler(async (req, res, next) => {
   let isSuspend=false
   let badWords
-  const { text, contentId, responseTo } = req.body;
-  
-  const findBadWords=await BadWords.find()
-  if(findBadWords==0){
-    badWords=[]
-  }else{
-    badWords=findBadWords[0].badWords
-  }
-
-   
-  badWords.forEach(item=>{
-    let textCheck
-    const lowerText=req.body.input.text.toLowerCase()
-    const lowerItem=item.word.toLowerCase()
-    if(req.body.input.text)
-    {textCheck=lowerText.includes(lowerItem)
-    }
-    if(!textCheck){
-      isSuspend=true
-    }
-  })
+  let { text, contentId, responseTo } = req.body;
 
 
   if (!text) {
@@ -597,10 +746,25 @@ exports.addComment = asyncHandler(async (req, res, next) => {
       return next(new ErrorResponse("content not found", 404));
     }
     
+    
+  const findBadWords=await BadWords.find()
+  const badwords = findBadWords[0].badWords
+  console.log('>>>>' , badwords)
+  
+  badwords.forEach(elem => {
+      console.log('enter to forEach')
+      const word = new RegExp(elem.word)
+    //   console.log(Text.includes(word))
+      while(word.test(text)){
+         text = text.replace(elem.word , "***")
+      }
+  })
+  console.log(text)
+    
     const writer = {
       _id: req.user._id,
       username: req.user.username,
-      pictureProfile: req.pictureProfile,
+      pictureProfile: req.user.pictureProfile,
     };
 
     const newComment = await Comment.create({
@@ -628,7 +792,22 @@ exports.addComment = asyncHandler(async (req, res, next) => {
   if (!comment) {
     return next(new ErrorResponse("comment not found", 404));
   }
-
+  
+  const findBadWords=await BadWords.find()
+  const badwords = findBadWords[0].badWords
+  console.log('>>>>' , badwords)
+//   const Text = text.split(' ')
+  let newText;
+  badwords.forEach(elem=>{
+      const word = new RegExp(elem.word)
+      
+    //   console.log(Text.includes(word))
+      while(word.test(text)){
+         text = text.replace(elem.word , "***")
+      }
+     
+  })
+  console.log(text)
   const writer = {
     _id: req.user._id,
     username: req.user.username,
@@ -656,7 +835,7 @@ exports.addComment = asyncHandler(async (req, res, next) => {
     username: req.user.username,
     pictureProfile: req.user.pictureProfile,
     createAt: Date.now(),
-    text: text,
+    text,
   };
 
   await comment.updateOne({

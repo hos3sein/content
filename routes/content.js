@@ -26,6 +26,7 @@ router.get("/alllast", protect, C.allLast);
 
 router.get("/allwithouttoken", C.allWithoutToken);
 
+router.get("/allcontents", protect ,C.adminAll);
 
 router.get("/all", protect, C.all);
 
