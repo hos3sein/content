@@ -7,12 +7,15 @@ const SearchHistory = require("../models/SearchHistory");
 const { refresh } = require("../middleware/refresh");
 const { maxReport } = require("../middleware/maxReportLength");
 
+
+
 const Point = require("../models/Point");
 const {
   deleteFileNews,
   delteFileContent,
   notification,
-  addPoint
+  addPoint,
+  newLog
 } = require("../utils/request");
 const { deleteFile } = require("../utils/deleteFile");
 exports.createContent = asyncHandler(async (req, res, next) => {
@@ -100,6 +103,42 @@ exports.createContent = asyncHandler(async (req, res, next) => {
 
 
 
+
+exports.editAdminNews = asyncHandler(async(req , res , next)=>{
+    
+  const { title, description, photo, video, voice } = req.body;
+  const id = req.params.newsId 
+  const isAdmin = req.user.group.includes("admin");
+  const isSuperAdmin = req.user.group.includes("superAdmin");
+  if (!isAdmin && !isSuperAdmin) {
+    return next(new ErrorResponse("you dont have access to this route", 401));
+  }
+  const content = await Content.findById(id)
+  if (!content){
+    return res.status(404).json({
+      success : false, 
+      message : 'this content is not exist!!'
+    })
+  }
+
+  await Content.findByIdAndUpdate(id , {
+    title : title,
+    description : description,
+    photo : photo,
+    video : video,
+    voice : voice
+  })
+
+  return res.status(200).json({
+    success : true,
+    data : 'content successfully updated!!'
+  })
+
+})
+
+
+
+
 exports.createContentWeb = asyncHandler(async (req, res, next) => {
   const isAdmin = req.user.group.includes("admin");
   const isSuperAdmin = req.user.group.includes("superAdmin");
@@ -125,6 +164,16 @@ exports.createContentWeb = asyncHandler(async (req, res, next) => {
   if (photo.length){
     let index = 1
     photo.forEach(elem=>{
+      const obj = {index : index , text : null , image : elem}
+      input.push(obj)
+      index += 1
+    })
+  }
+  
+  
+  if (video.length){
+    let index = 1
+    video.forEach(elem=>{
       const obj = {index : index , text : null , image : elem}
       input.push(obj)
       index += 1
@@ -157,7 +206,14 @@ exports.createContentWeb = asyncHandler(async (req, res, next) => {
       path: "comments",
     })
   await refresh(forum);
-  
+  const Log = {
+    admin : {username :req.user.username , phone : req.user.phone , adminRole : req.user?.adminRole ,group : req.user?.group , firstName : req.user?.firstName , lastName : req.user?.lastName},
+    section : "Content",
+    part : "create news",
+    success : true,
+    description : `${req.user.username}  has successfully created a new news item with the name ${title} `,
+  }
+  await newLog(Log)
   res.status(201).json({ success: true, content: newContent });
 });
 
@@ -664,9 +720,30 @@ exports.activeDeactive = asyncHandler(async (req, res, next) => {
   content.approve = !approve;
 
   await content.save();
+  
+  const title = (!content.title) ? content.input[0].text : content.title
 
   await refresh()
-
+  if (approve){
+    const Log = {
+    admin : {username :req.user.username , phone : req.user.phone , adminRole : req.user?.adminRole ,group : req.user?.group , firstName : req.user?.firstName , lastName : req.user?.lastName},
+    section : "Content",
+    part : "deActive content",
+    success : true,
+    description : `${req.user.username}  has successfully deActivate a content item with the name ${title} `,
+  }
+  await newLog(Log) 
+  }
+ else{
+    const Log = {
+    admin : {username :req.user.username , phone : req.user.phone , adminRole : req.user?.adminRole ,group : req.user?.group , firstName : req.user?.firstName , lastName : req.user?.lastName},
+    section : "Content",
+    part : "Activate content",
+    success : true,
+    description : `${req.user.username}  has successfully Activate a content item with the name ${title} `,
+  }
+  await newLog(Log) 
+ }
   return res.status(200).json({
     success: true,
     data: {},
@@ -1328,7 +1405,14 @@ exports.deleteContentAdmin = asyncHandler(async (req, res, next) => {
     await Comment.deleteMany({ contentId: req.params.id });
 
     await refresh(writerId);
-
+    const Log = {
+      admin : {username :req.user.username , phone : req.user.phone , adminRole : req.user?.adminRole ,group : req.user?.group , firstName : req.user?.firstName , lastName : req.user?.lastName},
+      section : "Content",
+      part : "delete content",
+      success : true,
+      description : `${req.user.username}  has successfully deleted a content item with the name ${content.input[0].text}`,
+    }
+    await newLog(Log)
     res.status(200).json({
       success: true,
     });
@@ -1379,7 +1463,14 @@ exports.deleteContentAdmin = asyncHandler(async (req, res, next) => {
       await Comment.deleteMany({ contentId: req.params.id });
 
       await refresh(writerId);
-
+      const Log = {
+        admin : {username :req.user.username , phone : req.user.phone , adminRole : req.user?.adminRole ,group : req.user?.group , firstName : req.user?.firstName , lastName : req.user?.lastName},
+        section : "Content",
+        part : "delete content",
+        success : true,
+        description : `${req.user.username}  has successfully deleted a content item with the name ${content.input[0].text}`,
+      }
+      await newLog(Log)
       res.status(200).json({
         success: true,
       });
@@ -1389,7 +1480,14 @@ exports.deleteContentAdmin = asyncHandler(async (req, res, next) => {
       await Comment.deleteMany({ contentId: req.params.id });
 
       await refresh(writerId);
-
+      const Log = {
+        admin : {username :req.user.username , phone : req.user.phone , adminRole : req.user?.adminRole ,group : req.user?.group , firstName : req.user?.firstName , lastName : req.user?.lastName},
+        section : "Content",
+        part : "delete content",
+        success : true,
+        description : `${req.user.username}  has successfully deleted a content item with the name ${content.input[0].text}`,
+      }
+      await newLog(Log)
       res.status(200).json({
         success: true,
       });
@@ -1452,7 +1550,14 @@ exports.deleteNewstAdmin = asyncHandler(async (req, res, next) => {
     await Comment.deleteMany({ contentId: req.params.id });
 
     await refresh(writerId);
-
+    const Log = {
+      admin : {username :req.user.username , phone : req.user.phone , adminRole : req.user?.adminRole ,group : req.user?.group , firstName : req.user?.firstName , lastName : req.user?.lastName},
+      section : "Content",
+      part : "delete content",
+      success : true,
+      description : `${req.user.username}  has successfully deleted a news item with the name ${content.title}`,
+    }
+    await newLog(Log)
     res.status(200).json({
       success: true,
     });
@@ -1462,7 +1567,14 @@ exports.deleteNewstAdmin = asyncHandler(async (req, res, next) => {
     await Comment.deleteMany({ contentId: req.params.id });
 
     await refresh(writerId);
-
+    const Log = {
+      admin : {username :req.user.username , phone : req.user.phone , adminRole : req.user?.adminRole ,group : req.user?.group , firstName : req.user?.firstName , lastName : req.user?.lastName},
+      section : "Content",
+      part : "delete content",
+      success : true,
+      description : `${req.user.username}  has successfully deleted a news item with the name ${content.title}`,
+    }
+    await newLog(Log)
     res.status(200).json({
       success: true,
     });
@@ -1717,6 +1829,7 @@ exports.getAllCommentForSuspend = asyncHandler(async (req, res, next) => {
     data: forum,
   });
 })
+
 exports.editBadWords = asyncHandler(async (req, res, next) => {
   const {array}=req.body
   const badWords=await BadWords.find()
@@ -1734,6 +1847,7 @@ exports.editBadWords = asyncHandler(async (req, res, next) => {
     data:array
   });
 })
+
 exports.editBadWords = asyncHandler(async (req, res, next) => {
   const {badWord}=req.body
   const badWords=await BadWords.find()
@@ -1753,6 +1867,7 @@ exports.editBadWords = asyncHandler(async (req, res, next) => {
     data:badWord
   });
 })
+
 exports.getBadWords = asyncHandler(async (req, res, next) => {
   // await BadWords.remove()
   // res.status(200).json({

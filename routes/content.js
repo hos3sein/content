@@ -53,6 +53,8 @@ router.get("/reportcontent/:id", C.reportContent);
 
 router.get("/reportcomment/:id", C.reportComment);
 
+router.post("/updateNews/:newsId" , protect , C.editAdminNews)
+
 
 router.get("/activedeactive/:id",protect,C.activeDeactive)
 
