@@ -1601,7 +1601,8 @@ exports.likeContent = asyncHandler(async (req, res, next) => {
 
   const likeArray = content.like; 
   
-  
+ 
+
 
   likeArray.forEach((item) => {
     console.log(item);
